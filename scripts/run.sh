@@ -97,7 +97,6 @@ fi
 echo "Starting router-reboot container..."
 docker run -d \
     --name ${CONTAINER_NAME} \
-    --restart unless-stopped \
     --network host \
     -v "${CONFIG_DIR}:/app/config" \
     -e TZ=Asia/Tokyo \

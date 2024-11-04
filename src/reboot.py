@@ -28,11 +28,7 @@ class RouterReboot:
             config_path (str): Path to the configuration file
         """
         self.config = self._load_config(config_path)
-        self.driver = self._setup_driver()
-        self.wait = WebDriverWait(
-            self.driver, 
-            self.config['router']['connection']['timeout_seconds']
-        )
+        self.driver = None
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file
@@ -54,61 +50,63 @@ class RouterReboot:
             raise
 
     def _setup_driver(self) -> webdriver.Chrome:
-        """Setup Chrome WebDriver with appropriate options"""
+        """Setup Chrome WebDriver with appropriate options
+        
+        Returns:
+            webdriver.Chrome: Configured Chrome WebDriver
+            
+        Raises:
+            WebDriverException: If driver setup fails
+        """
         chrome_options = Options()
         
-        # 基本的なオプション
-        chrome_options.add_argument('--headless=new')  # 新しいヘッドレスモード
+        # Basic options for container environment
+        chrome_options.add_argument('--headless=new')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         
-        # メモリ関連の設定
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--memory-pressure-off')
-        chrome_options.add_argument('--disable-software-rasterizer')
-        
-        # キャッシュとセッション関連
-        chrome_options.add_argument(f'--user-data-dir=/tmp/chrome')
-        chrome_options.add_argument('--disk-cache-dir=/selenium-cache')
+        # Stability improvements
+        chrome_options.add_argument('--disable-background-timer-throttling')
+        chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+        chrome_options.add_argument('--disable-renderer-backgrounding')
+        chrome_options.add_argument('--disable-features=TranslateUI')
         chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--metrics-recording-only')
+        chrome_options.add_argument('--mute-audio')
         
-        # ネットワーク関連
-        chrome_options.add_argument('--disable-web-security')
-        chrome_options.add_argument('--allow-running-insecure-content')
-        chrome_options.add_argument('--ignore-certificate-errors')
+        # Memory and performance settings
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--disable-software-rasterizer')
+        chrome_options.add_argument('--disable-dev-tools')
         
-        # パフォーマンス設定
+        # Session handling
+        chrome_options.add_argument('--disable-session-crashed-bubble')
+        chrome_options.add_argument('--disable-infobars')
         chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--start-maximized')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
         
-        # ログレベルの設定
-        chrome_options.add_argument('--log-level=3')
-        chrome_options.add_argument('--silent')
-
+        # Cache and data settings
+        chrome_options.add_argument('--incognito')
+        chrome_options.add_argument('--deterministic-fetch')
+        chrome_options.add_argument('--disk-cache-dir=/tmp/chrome/cache')
+        chrome_options.add_argument('--user-data-dir=/tmp/chrome/user-data')
+        
         try:
             service = Service(
                 executable_path=os.getenv('CHROMEDRIVER_PATH', '/usr/bin/chromedriver')
             )
             
+            logger.info("Starting Chrome driver...")
             driver = webdriver.Chrome(
                 service=service,
                 options=chrome_options
             )
             
-            # ページロードのタイムアウト設定
-            driver.set_page_load_timeout(
-                self.config['router']['connection']['timeout_seconds']
-            )
-            
-            # JavaScriptの実行を待機
+            driver.set_page_load_timeout(30)
             driver.implicitly_wait(10)
             
-            # ウィンドウサイズを設定
-            driver.set_window_size(1920, 1080)
-            
+            logger.info("Chrome driver started successfully")
             return driver
-            
+                
         except WebDriverException as e:
             logger.error(f"Failed to setup Chrome driver: {e}")
             raise
@@ -164,113 +162,125 @@ class RouterReboot:
             return False
 
     def login(self) -> bool:
-        """Login to the router"""
+        """Attempt to login to the router with proper form handling
+        
+        Returns:
+            bool: True if login successful, False otherwise
+        """
         try:
-            # ページロード前に少し待機
-            time.sleep(2)
-            
-            # アクセス
+            # Access login page
             self.driver.get(self.config['router']['connection']['base_url'])
             
-            # ページが完全にロードされるまで待機
-            self.wait.until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            # Wait for page load
+            wait = WebDriverWait(self.driver, 20)
+            wait.until(
+                EC.presence_of_element_located((By.NAME, "airstation_uname"))
             )
             
-            # さらに少し待機してJavaScriptの実行を確実に
-            time.sleep(2)
+            # Input username
+            username_field = self.driver.find_element(By.NAME, "airstation_uname")
+            username_field.clear()
+            username_field.send_keys(self.config['router']['auth']['username'])
             
-            # ユーザー名とパスワードを入力
-            if not self._safe_find_and_input(
-                By.ID, 
-                "form_USERNAME", 
-                self.config['router']['auth']['username'],
-                timeout=20  # タイムアウトを延長
-            ):
-                return False
-                
-            if not self._safe_find_and_input(
-                By.ID, 
-                "form_PASSWORD", 
-                self.config['router']['auth']['password'],
-                timeout=20
-            ):
-                return False
-
-            # ログインボタンをクリック
-            if not self._safe_find_and_click(By.CLASS_NAME, "button_login", timeout=20):
-                return False
-
+            # Input password
+            password_field = self.driver.find_element(By.NAME, "airstation_pass")
+            password_field.clear()
+            password_field.send_keys(self.config['router']['auth']['password'])
+            
+            # Click login button
+            login_button = wait.until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "button_login"))
+            )
+            login_button.click()
+            
+            # Wait for login processing
+            time.sleep(3)
+            
+            # Verify login success
+            if "login.html" in self.driver.current_url:
+                raise Exception("Login failed - still on login page")
+            
             logger.info("Login successful")
             return True
-
+            
         except Exception as e:
             logger.error(f"Login failed: {e}")
             return False
 
     def reboot(self) -> bool:
-        """Reboot the router
+        """Attempt to reboot the router using direct form interaction
         
         Returns:
             bool: True if reboot successful, False otherwise
         """
-        retry_count = self.config['router']['options']['retry_count']
-        retry_interval = self.config['router']['options']['retry_interval_seconds']
-
-        for attempt in range(retry_count):
-            try:
+        try:
+            # Create initial driver
+            self.driver = self._setup_driver()
+            wait = WebDriverWait(self.driver, 20)
+            
+            # Initial login
+            if not self.login():
+                raise Exception("Failed to initial login")
+            
+            # Access reboot page directly using configured URL
+            logger.info("Accessing reboot page...")
+            self.driver.get(f"{self.config['router']['connection']['base_url']}/save_init.html")
+            
+            # Check if redirected to login
+            if "login.html" in self.driver.current_url:
+                logger.info("Re-authentication required, logging in again...")
                 if not self.login():
-                    raise Exception("Failed to login")
-
-                # Access reboot page
-                self.driver.get(
-                    f"{self.config['router']['connection']['base_url']}/save_init.html"
-                )
-
-                # Find and click the reboot button
-                reboot_button = self.wait.until(
-                    EC.element_to_be_clickable((By.NAME, "reboot"))
-                )
-                reboot_button.click()
-
-                # Wait for confirmation dialog
-                time.sleep(2)
-
-                logger.info("Router is rebooting...")
-                time.sleep(120)  # Wait for router to restart
-
-                logger.info("Reboot command sent successfully")
-                return True
-
-            except Exception as e:
-                logger.error(f"Attempt {attempt + 1}/{retry_count} failed: {e}")
-                if attempt < retry_count - 1:
-                    logger.info(f"Retrying in {retry_interval} seconds...")
-                    time.sleep(retry_interval)
-                    continue
-                return False
-
-            finally:
-                try:
+                    raise Exception("Failed to re-login")
+                
+                # Try accessing reboot page again
+                self.driver.get(f"{self.config['router']['connection']['base_url']}/save_init.html")
+            
+            # Find and click reboot button
+            logger.info("Looking for reboot button...")
+            reboot_button = wait.until(
+                EC.element_to_be_clickable((By.NAME, "reboot"))
+            )
+            reboot_button.click()
+            
+            # Wait for confirmation dialog
+            logger.info("Router is rebooting...")
+            time.sleep(2)
+            
+            # Wait for reboot process
+            time.sleep(120)
+            
+            logger.info("Reboot sequence completed")
+            success = True
+            
+        except Exception as e:
+            logger.error(f"Reboot attempt failed: {e}")
+            success = False
+        
+        finally:
+            # Clean up resources
+            try:
+                if self.driver:
                     self.driver.quit()
-                except Exception:
-                    pass
+                    self.driver = None
+            except Exception as e:
+                logger.error(f"Error during driver cleanup: {e}")
+        
+        return success
 
     def __enter__(self):
-        """Context manager entry
+        """Context manager entry method
         
         Returns:
-            RouterReboot: self
+            RouterReboot: self instance
         """
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Context manager exit
-        
-        Ensures proper cleanup of resources
-        """
+        """Context manager exit method for cleanup"""
         try:
-            self.driver.quit()
+            if self.driver:
+                self.driver.quit()
+                self.driver = None
         except Exception:
             pass
 
@@ -282,6 +292,8 @@ if __name__ == "__main__":
                 logger.error("Router reboot failed")
                 exit(1)
             logger.info("Router reboot completed successfully")
+            # Successfully completed, exit with status 0
+            exit(0)
     except Exception as e:
         logger.error(f"Fatal error: {e}")
         exit(1)
