@@ -5,10 +5,12 @@ set -e
 
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# プロジェクトのルートディレクトリを取得
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # デフォルトの設定
 IMAGE_NAME="router-reboot-docker"
-CONFIG_DIR="${SCRIPT_DIR}/config"
+CONFIG_DIR="${PROJECT_ROOT}/config"
 CONTAINER_NAME="router-reboot"
 
 # ヘルプ関数
@@ -60,11 +62,28 @@ if [ ! -d "$CONFIG_DIR" ]; then
     echo "Creating config directory..."
     mkdir -p "$CONFIG_DIR"
     
-    # config.example.ymlがあれば、それをコピー
-    if [ -f "${SCRIPT_DIR}/config/config.example.yml" ]; then
-        echo "Copying example configuration..."
-        cp "${SCRIPT_DIR}/config/config.example.yml" "${CONFIG_DIR}/config.yml"
-    fi
+    echo "Creating example configuration..."
+    cat > "${CONFIG_DIR}/config.yml" << EOF
+router:
+  connection:
+    base_url: "http://192.168.11.1"
+    timeout_seconds: 30
+  
+  auth:
+    username: "admin"
+    password: ""
+    
+  endpoints:
+    login: "login.cgi"
+    reboot: "save_init.html"
+  
+  options:
+    verify_ssl: false
+    retry_count: 3
+    retry_interval_seconds: 5
+    mobile_mode: false
+EOF
+    echo "Example configuration created"
 fi
 
 # 既存のコンテナを停止・削除

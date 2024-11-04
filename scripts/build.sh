@@ -5,6 +5,8 @@ set -e
 
 # スクリプトのディレクトリを取得
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# プロジェクトのルートディレクトリを取得
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # バージョン情報を取得（Git tagから）
 VERSION=$(git describe --tags --always --dirty)
@@ -24,7 +26,7 @@ docker build -t ${FULL_IMAGE_NAME} \
     --build-arg VERSION=${VERSION} \
     --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
     --build-arg VCS_REF=$(git rev-parse --short HEAD) \
-    ${SCRIPT_DIR}
+    ${PROJECT_ROOT}
 
 # latestタグも作成
 docker tag ${FULL_IMAGE_NAME} ${IMAGE_NAME}:latest
