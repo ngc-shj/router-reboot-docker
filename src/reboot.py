@@ -111,56 +111,6 @@ class RouterReboot:
             logger.error(f"Failed to setup Chrome driver: {e}")
             raise
 
-    def _safe_find_and_click(self, by: By, value: str, timeout: int = 10) -> bool:
-        """Safely find and click an element
-        
-        Args:
-            by (By): Selenium By locator
-            value (str): Element identifier
-            timeout (int): Wait timeout in seconds
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            element = self.wait.until(
-                EC.element_to_be_clickable((by, value))
-            )
-            element.click()
-            return True
-        except TimeoutException:
-            logger.error(f"Element not found or not clickable: {value}")
-            return False
-        except Exception as e:
-            logger.error(f"Error clicking element {value}: {e}")
-            return False
-
-    def _safe_find_and_input(self, by: By, value: str, input_text: str, timeout: int = 10) -> bool:
-        """Safely find and input text into an element
-        
-        Args:
-            by (By): Selenium By locator
-            value (str): Element identifier
-            input_text (str): Text to input
-            timeout (int): Wait timeout in seconds
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            element = self.wait.until(
-                EC.presence_of_element_located((by, value))
-            )
-            element.clear()
-            element.send_keys(input_text)
-            return True
-        except TimeoutException:
-            logger.error(f"Element not found: {value}")
-            return False
-        except Exception as e:
-            logger.error(f"Error inputting text to {value}: {e}")
-            return False
-
     def login(self) -> bool:
         """Attempt to login to the router with proper form handling
         
