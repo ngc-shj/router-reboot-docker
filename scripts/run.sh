@@ -1,19 +1,20 @@
 #!/bin/bash
 
-# エラーが発生したら即座に終了
+# Exit immediately if a command exits with a non-zero status
 set -e
 
-# スクリプトのディレクトリを取得
+# Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# プロジェクトのルートディレクトリを取得
+
+# Get the project root directory
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# デフォルトの設定
+# Default settings
 IMAGE_NAME="router-reboot-docker"
 CONFIG_DIR="${PROJECT_ROOT}/config"
 CONTAINER_NAME="router-reboot"
 
-# ヘルプ関数
+# Help function to display usage
 show_help() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -25,7 +26,7 @@ show_help() {
     echo ""
 }
 
-# コマンドライン引数の解析
+# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
@@ -56,12 +57,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# 設定ディレクトリの存在確認
+# Check if config directory exists, create if not
 if [ ! -d "$CONFIG_DIR" ]; then
     echo "Config directory not found: $CONFIG_DIR"
     echo "Creating config directory..."
     mkdir -p "$CONFIG_DIR"
     
+    # Create default configuration file
     echo "Creating example configuration..."
     cat > "${CONFIG_DIR}/config.yml" << EOF
 router:
@@ -86,14 +88,14 @@ EOF
     echo "Example configuration created"
 fi
 
-# 既存のコンテナを停止・削除
+# Stop and remove existing container if it exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "Stopping and removing existing container..."
     docker stop ${CONTAINER_NAME} 2>/dev/null || true
     docker rm ${CONTAINER_NAME} 2>/dev/null || true
 fi
 
-# コンテナを実行
+# Start the container
 echo "Starting router-reboot container..."
 docker run -d \
     --name ${CONTAINER_NAME} \
@@ -102,6 +104,7 @@ docker run -d \
     -e TZ=Asia/Tokyo \
     ${IMAGE_NAME}:${TAG:-latest}
 
+# Display success message and useful information
 echo "Container started successfully!"
 echo "Container name: ${CONTAINER_NAME}"
 echo "Config directory: ${CONFIG_DIR}"

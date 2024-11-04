@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# エラーが発生したら即座に終了
+# Exit immediately if a command exits with a non-zero status
 set -e
 
-# スクリプトのディレクトリを取得
+# Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# プロジェクトのルートディレクトリを取得
+
+# Get the project root directory
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# バージョン情報を取得（Git tagから）
+# Get version information from Git tags
 VERSION=$(git describe --tags --always --dirty)
 if [ -z "$VERSION" ]; then
     VERSION="dev"
@@ -16,11 +17,11 @@ fi
 
 echo "Building router-reboot-docker version: $VERSION"
 
-# イメージ名を設定
+# Set image name
 IMAGE_NAME="router-reboot-docker"
 FULL_IMAGE_NAME="${IMAGE_NAME}:${VERSION}"
 
-# Dockerイメージをビルド
+# Build Docker image
 echo "Building Docker image..."
 docker build -t ${FULL_IMAGE_NAME} \
     --build-arg VERSION=${VERSION} \
@@ -28,7 +29,7 @@ docker build -t ${FULL_IMAGE_NAME} \
     --build-arg VCS_REF=$(git rev-parse --short HEAD) \
     ${PROJECT_ROOT}
 
-# latestタグも作成
+# Create latest tag
 docker tag ${FULL_IMAGE_NAME} ${IMAGE_NAME}:latest
 
 echo "Build completed successfully!"

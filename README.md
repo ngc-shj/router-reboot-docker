@@ -26,25 +26,32 @@ This tool provides a Docker container that automates the rebooting of Buffalo ro
 ```
 router-reboot-docker/
 │
-├── .github/workflows/       # GitHub Actions configuration
-│   └── docker-publish.yml  # CI/CD configuration
+├── .github/                        # GitHub Actions configuration
+│   └── workflows/                  # CI/CD workflow definitions
+│       └── docker-publish.yml      # Docker image publishing workflow
 │
-├── src/                    # Source code
-│   └── reboot.py          # Main script
+├── src/                           # Source code
+│   └── reboot.py                  # Main router reboot script
 │
-├── config/                 # Configuration files
-│   └── config.example.yml # Example configuration
+├── config/                        # Configuration files
+│   ├── .gitkeep                  # Keep empty directory in git
+│   └── config.example.yml        # Example configuration file
 │
-├── scripts/               # Execution scripts
-│   ├── build.sh          # Build script
-│   └── run.sh            # Run script
+├── scripts/                       # Utility scripts
+│   ├── build.sh                  # Build Docker image
+│   ├── run.sh                    # Run Docker container
+│   └── cron-reboot.sh           # Scheduled execution script
 │
-├── .gitignore            # Git exclusions
-├── .dockerignore         # Docker build exclusions
-├── docker-compose.yml    # Docker Compose configuration
-├── Dockerfile            # Docker image definition
-├── requirements.txt      # Python dependencies
-└── README.md             # This file
+├── logs/                         # Application logs
+│   └── .gitkeep                 # Keep empty directory in git
+│
+├── .gitignore                    # Git ignore rules
+├── .dockerignore                 # Docker build ignore rules
+├── docker-compose.yml            # Docker Compose configuration
+├── Dockerfile                    # Docker image definition
+├── requirements.txt              # Python dependencies
+├── LICENSE                       # Apache 2.0 license
+└── README.md                     # Project documentation
 ```
 
 ## Installation

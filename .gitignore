@@ -40,6 +40,9 @@ config/*.local.yml
 # Logs
 *.log
 logs/
+logs/*
+!logs/.gitkeep
+
 
 # Docker
 .docker/
