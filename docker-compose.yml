@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  router-reboot:
+    build: .
+    volumes:
+      - ./config:/app/config
+    network_mode: host
+    environment:
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

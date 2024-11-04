@@ -1,0 +1,19 @@
+router:
+  connection:
+    base_url: "http://192.168.11.1"
+    timeout_seconds: 30
+  
+  auth:
+    username: "admin"
+    password: ""
+    
+  endpoints:
+    login: "login.cgi"
+    reboot: "save_init.html"
+  
+  options:
+    verify_ssl: false
+    retry_count: 3
+    retry_interval_seconds: 5
+    mobile_mode: false
+
