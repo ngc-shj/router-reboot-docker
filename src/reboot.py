@@ -174,7 +174,8 @@ class RouterReboot:
             
             # Access reboot page directly using configured URL
             logger.info("Accessing reboot page...")
-            self.driver.get(f"{self.config['router']['connection']['base_url']}/save_init.html")
+            reboot_url = f"{self.config['router']['connection']['base_url']}/{self.config['router']['endpoints']['reboot']}"
+            self.driver.get(reboot_url)
             
             # Check if redirected to login
             if "login.html" in self.driver.current_url:
@@ -183,7 +184,7 @@ class RouterReboot:
                     raise Exception("Failed to re-login")
                 
                 # Try accessing reboot page again
-                self.driver.get(f"{self.config['router']['connection']['base_url']}/save_init.html")
+                self.driver.get(reboot_url)
             
             # Find and click reboot button
             logger.info("Looking for reboot button...")
