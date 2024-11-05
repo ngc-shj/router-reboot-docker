@@ -134,16 +134,96 @@ Alternatively, you can use Docker Compose:
 docker-compose up -d
 ```
 
-## Monitoring
+## Scheduled Execution
 
-Check container logs:
+To schedule the router reboot to run daily at 5 AM, follow these steps:
+
+### Setup
+
+1. Make the cron script executable:
 ```bash
-docker logs router-reboot
+chmod +x scripts/cron-reboot.sh
 ```
 
-View container status:
+2. Add to crontab:
 ```bash
+# Edit crontab
+crontab -e
+
+# Add the following line (replace with your actual path)
+0 5 * * * /path/to/router-reboot-docker/scripts/cron-reboot.sh
+```
+
+### Logging
+
+The script logs all operations to `logs/router-reboot.log`. The log entries include:
+- Timestamp for each operation
+- Container startup and cleanup
+- Success/failure status
+
+To monitor the execution:
+```bash
+# View the latest log entries
+tail -f logs/router-reboot.log
+
+# Check the last execution
+grep "Starting router reboot process" logs/router-reboot.log | tail -n 1
+```
+
+### Cron Format Explanation
+
+```
+# Format: 
+# Minute Hour Day Month DayOfWeek Command
+# 0      5    *   *     *        /path/to/script
+
+# Fields:
+# Minute        0-59
+# Hour          0-23
+# Day           1-31
+# Month         1-12 or jan-dec
+# DayOfWeek     0-6  or sun-sat (0=Sunday)
+```
+
+### Verification
+
+To verify the setup:
+
+1. Check if cron job is registered:
+```bash
+crontab -l
+```
+
+2. Ensure log directory exists and is writable:
+```bash
+ls -ld logs/
+```
+
+3. Test the script manually:
+```bash
+./scripts/cron-reboot.sh
+```
+
+### Notes
+
+- Ensure Docker has appropriate permissions
+- The script uses absolute paths for reliability
+- Logs are rotated automatically (10MB per file, max 3 files)
+- The script handles cleanup of existing containers
+
+## Monitoring
+
+To monitor the container status and logs:
+
+```bash
+# View container logs
+docker logs router-reboot
+
+# View container status
 docker ps -a | grep router-reboot
+
+# Follow log output
+docker logs -f router-reboot
 ```
 
 ## Security Considerations
@@ -152,6 +232,8 @@ docker ps -a | grep router-reboot
 - Use strong passwords
 - Restrict network access appropriately
 - Review logs regularly for unauthorized access attempts
+- Ensure proper file permissions for configuration files
+- Run container with minimal required privileges
 
 ## Troubleshooting
 
@@ -161,11 +243,18 @@ Common issues and solutions:
    - Verify network connectivity
    - Check router IP address
    - Ensure correct credentials
+   - Verify router web interface is accessible
 
 2. Container issues:
-   - Check Docker logs
+   - Check Docker logs: `docker logs router-reboot`
    - Verify configuration file
    - Ensure proper permissions
+   - Check container status: `docker ps -a | grep router-reboot`
+
+3. Selenium/Chrome issues:
+   - Check Chrome driver compatibility
+   - Verify memory allocation (`--shm-size=2g`)
+   - Review browser automation logs
 
 ## Contributing
 
@@ -181,14 +270,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Acknowledgments
 
-- Buffalo router web interface documentation
+- Buffalo router web interface
 - Selenium WebDriver
-- Docker community
-
-## Version History
-
-- 1.0.0 (2024-11-04)
-  - Initial release
-  - Basic reboot functionality
-  - Docker container support
+- Docker technology
 
