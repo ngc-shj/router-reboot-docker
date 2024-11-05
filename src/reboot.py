@@ -119,7 +119,8 @@ class RouterReboot:
         """
         try:
             # Access login page
-            self.driver.get(self.config['router']['connection']['base_url'])
+            login_url = f"{self.config['router']['connection']['base_url']}/{self.config['router']['endpoints']['login']}"
+            self.driver.get(login_url)
             
             # Wait for page load
             wait = WebDriverWait(self.driver, 20)
@@ -147,7 +148,7 @@ class RouterReboot:
             time.sleep(3)
             
             # Verify login success
-            if "login.html" in self.driver.current_url:
+            if self.config['router']['endpoints']['login'] in self.driver.current_url:
                 raise Exception("Login failed - still on login page")
             
             logger.info("Login successful")

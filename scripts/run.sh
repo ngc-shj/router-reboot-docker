@@ -76,7 +76,7 @@ router:
     password: ""
     
   endpoints:
-    login: "login.cgi"
+    login: "login.html"
     reboot: "save_init.html"
   
   options:
