@@ -6,6 +6,17 @@
 
 This tool provides a Docker container that automates the rebooting of Buffalo routers. It uses browser automation to handle the login process and UI interactions, enabling scheduled router reboots.
 
+## Tested Models
+
+The following Buffalo router models and firmware versions have been tested:
+
+| Model         | Firmware Version | Status  |
+|--------------|-----------------|---------|
+| WSR-6000AX8P | 1.20           | Working |
+| WSR-6000AX8P | 1.25           | Working |
+
+Other models or firmware versions may work but have not been tested.
+
 ## Key Features
 
 - Automated browser control using Selenium
