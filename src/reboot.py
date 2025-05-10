@@ -30,6 +30,27 @@ class RouterReboot:
         self.config = self._load_config(config_path)
         self.driver = None
 
+        # Store commonly used URLs as instance variables
+        self._base_url = self.config['router']['connection']['base_url']
+        self._login_endpoint = self.config['router']['endpoints']['login']
+        self._reboot_endpoint = self.config['router']['endpoints']['reboot']
+
+    def _get_login_url(self) -> str:
+        """Get the router login URL
+        
+        Returns:
+            str: Complete login URL
+        """
+        return f"{self._base_url}/{self._login_endpoint}"
+        
+    def _get_reboot_url(self) -> str:
+        """Get the router reboot URL
+        
+        Returns:
+            str: Complete reboot URL
+        """
+        return f"{self._base_url}/{self._reboot_endpoint}"
+
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file
         
@@ -119,7 +140,7 @@ class RouterReboot:
         """
         try:
             # Access login page
-            login_url = f"{self.config['router']['connection']['base_url']}/{self.config['router']['endpoints']['login']}"
+            login_url = self._get_login_url()
             self.driver.get(login_url)
             
             # Wait for page load
@@ -158,6 +179,75 @@ class RouterReboot:
             logger.error(f"Login failed: {e}")
             return False
 
+    def wait_for_login_screen(self, max_wait_time: int = 300, check_interval: int = 10) -> bool:
+        """Wait for router to complete rebooting by checking for login screen
+        
+        Args:
+            max_wait_time (int): Maximum time to wait in seconds
+            check_interval (int): Time between checks in seconds
+            
+        Returns:
+            bool: True if login screen detected, False if timeout
+        """
+        login_url = self._get_login_url()
+        logger.info(f"Waiting for router to complete reboot (checking for login screen at {login_url})")
+        
+        # Initial delay to give the router time to shut down
+        time.sleep(20)
+        
+        start_time = time.time()
+        login_detected = False
+        
+        while time.time() - start_time < max_wait_time:
+            # Create a new driver for each check to avoid stale connections
+            try:
+                test_driver = self._setup_driver()
+                test_driver.set_page_load_timeout(10)  # Short timeout for each check
+                
+                try:
+                    # Try to access the login page
+                    test_driver.get(login_url)
+                    
+                    # Check for login form element
+                    try:
+                        if test_driver.find_element(By.NAME, "airstation_uname"):
+                            logger.info("Login screen detected! Router has completed reboot.")
+                            login_detected = True
+                            break
+                    except NoSuchElementException:
+                        logger.info("Login form not found yet. Router still rebooting...")
+                
+                except WebDriverException as e:
+                    error_msg = str(e)
+                    first_line = error_msg.split('\n')[0] if '\n' in error_msg else error_msg
+                    logger.info(f"Router not responding yet: {first_line}")
+                
+                except Exception as e:
+                    logger.info(f"Error during check: {e}")
+                
+                finally:
+                    # Always clean up test driver
+                    try:
+                        test_driver.quit()
+                    except:
+                        pass
+            
+            except Exception as e:
+                logger.warning(f"Failed to create test driver: {e}")
+            
+            # Calculate and log remaining time
+            elapsed = time.time() - start_time
+            remaining = max_wait_time - elapsed
+            logger.info(f"Still waiting for router to come online... {int(remaining)}s remaining")
+            
+            # Wait before next check
+            time.sleep(check_interval)
+        
+        if not login_detected:
+            logger.warning(f"Router did not come online within {max_wait_time} seconds")
+        
+        return login_detected
+
     def reboot(self) -> bool:
         """Attempt to reboot the router using direct form interaction
         
@@ -175,7 +265,7 @@ class RouterReboot:
             
             # Access reboot page directly using configured URL
             logger.info("Accessing reboot page...")
-            reboot_url = f"{self.config['router']['connection']['base_url']}/{self.config['router']['endpoints']['reboot']}"
+            reboot_url = self._get_reboot_url()
             self.driver.get(reboot_url)
             
             # Check if redirected to login
@@ -198,11 +288,20 @@ class RouterReboot:
             logger.info("Router is rebooting...")
             time.sleep(2)
             
-            # Wait for reboot process
-            time.sleep(120)
+            # Cleanup driver before router goes offline
+            self.driver.quit()
+            self.driver = None
             
-            logger.info("Reboot sequence completed")
-            success = True
+            # Wait for router to come back online by checking for login screen
+            # instead of just waiting a fixed 120 seconds
+            success = self.wait_for_login_screen()
+            
+            if success:
+                logger.info("Reboot sequence completed successfully")
+            else:
+                logger.error("Reboot verification failed - router did not come back online")
+            
+            return success
             
         except Exception as e:
             logger.error(f"Reboot attempt failed: {e}")
