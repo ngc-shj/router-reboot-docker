@@ -16,8 +16,10 @@ ENV TZ=Asia/Tokyo
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user
-RUN useradd -r -s /bin/false appuser
+# Create non-root user with a home directory.
+# Chrome's crashpad handler writes under $HOME on startup; without an existing
+# home directory Chrome exits immediately ("session not created").
+RUN useradd -r -m -d /home/appuser -s /bin/false appuser
 
 # Create necessary directories and set permissions
 RUN mkdir -p /tmp/chrome && \
